@@ -188,7 +188,7 @@ table.kv td{overflow-wrap:anywhere}
           <details class="grp" open><summary>Model</summary>
             <div class="row"><button class="tog" data-layer="walls" aria-pressed="true">Walls</button><button class="tog" data-layer="roofs" aria-pressed="true">Roofs</button><button class="tog" data-layer="windows" aria-pressed="true">Openings</button></div>
             <div class="row"><button class="tog" data-layer="floors" aria-pressed="false">Interior (floors, cross walls)</button><button class="tog" data-layer="pins" aria-pressed="true">Field pins</button></div>
-            <div class="row"><label class="sel">Colour <select id="cMode" aria-label="Model colour"><option value="material">material</option><option value="severity">worst condition severity</option><option value="status">condition status</option><option value="source">geometry source</option></select></label></div></details>
+            <div class="row"><label class="sel">Colour <select id="cMode" aria-label="Model colour"><option value="photo" hidden>photo (aerial imagery)</option><option value="material">material</option><option value="severity">worst condition severity</option><option value="status">condition status</option><option value="source">geometry source</option></select></label></div></details>
           <details class="grp"><summary>Lidar points</summary>
             <div class="row"><button class="tog" data-layer="points" aria-pressed="false">2019 (3.7 pts/m²)</button><button class="tog" data-layer="points06" aria-pressed="false">2006–08 (0.3/m²)</button></div>
             <div class="row"><label class="sel">Size <input id="pSize" type="range" min="0.5" max="5" step="0.1" value="2.2"></label></div></details>
@@ -329,17 +329,51 @@ async function buildModel(){
       opacity:e.kind === "floor" ? 0.55 : e.kind === "interior" ? 0.7 : e.kind === "tree" ? 0.22 : e.kind === "ground" ? 0 : 1, depthWrite:e.kind !== "tree", side:THREE.DoubleSide, polygonOffset:e.kind === "window" || e.kind === "door", polygonOffsetFactor:-2});
     o.updateWorldMatrix(true, false);
     const g = o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); g.computeVertexNormals();
+    photoUV(id, g);
     const w = new THREE.Mesh(g, o.material); w.userData.id = id;
     if (e.kind !== "ground") layers[layerOf(e.kind)].add(w);
     meshes.set(id, w);
   }
   colorModel();
 }
+// photo textures (optional: imagery.textures from build_textures.py). Facades map u along the wall and v up; roofs map in plan.
+const TEXM = new Map(), texCache = new Map();
+function photoUV(id, g){
+  const T = S.imagery && S.imagery.textures; if (!T) return;
+  const key = T.elements[id], t = key && T.textures[key]; if (!t) return;
+  const p = g.attributes.position, nrm = g.attributes.normal, uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++){
+    const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i);
+    if (t.kind === "plan"){ uv[2*i] = (X - t.x0) / (t.x1 - t.x0); uv[2*i+1] = 1 - (Z - t.z0) / (t.z1 - t.z0); continue; }
+    let u = (X - t.origin[0]) * t.dir[0] + (Z - t.origin[1]) * t.dir[1];
+    // wall ends and window reveals face along the wall: sample just inside the corner instead of the padded edge (avoids streaks)
+    if (Math.abs(nrm.getX(i) * t.dir[1] - nrm.getZ(i) * t.dir[0]) < 0.5) u = Math.min(Math.max(u, t.u0 + 0.45), t.u1 - 0.45);
+    uv[2*i] = (u - t.u0) / (t.u1 - t.u0); uv[2*i+1] = (Y - t.v0) / (t.v1 - t.v0);
+  }
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); TEXM.set(id, t.file);
+}
+async function photoTex(file){
+  if (!texCache.has(file)){
+    const tx = await new THREE.TextureLoader().loadAsync(await imgURL(file)); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
+    tx.wrapS = tx.wrapT = THREE.ClampToEdgeWrapping; texCache.set(file, tx);
+  }
+  return texCache.get(file);
+}
+async function loadPhotoTextures(){ await Promise.all([...new Set(TEXM.values())].map(photoTex)); }
 function worstRec(id){ const r = recsBy.get(id) || []; return r.reduce((a, b) => (!a || SEVR[b.severity] > SEVR[a.severity]) ? b : a, null); }
 function statusOf(id){ const r = recsBy.get(id) || []; for (const s of ["conflicting", "site", "verified", "reported", "observed-lidar", "observed-imagery", "withheld"]) if (r.some(x => x.status === s)) return s; return "none"; }
 function colorModel(){
+  const photo = cMode === "photo", T = S.imagery && S.imagery.textures;
   for (const [id, m] of meshes){
     const e = EL.get(id); let c;
+    const tex = photo && TEXM.has(id) ? texCache.get(TEXM.get(id)) : null;
+    if (m.material.map !== tex){ m.material.map = tex; m.material.emissiveMap = tex; m.material.needsUpdate = true; }
+    if (photo){
+      c = tex ? 0xffffff : e.kind === "chimney" && T && T.brick_rgb ? (T.brick_rgb[0] << 16 | T.brick_rgb[1] << 8 | T.brick_rgb[2]) : COLORS.material[e.kind];
+      m.material.color.setHex(c ?? 0x888888);
+      m.material.emissive.setHex(id === selected ? 0xb09030 : tex ? 0x6a6a6a : 0x000000);
+      continue;
+    }
     if (cMode === "material" || e.kind === "tree" || e.kind === "context" || e.kind === "window" && cMode !== "source" && !(recsBy.get(id) || []).length) c = COLORS.material[e.kind];
     else if (cMode === "severity"){ const w = worstRec(id); c = COLORS.severity[w ? w.severity : "none"]; }
     else if (cMode === "status") c = COLORS.status[statusOf(id)];
@@ -536,6 +570,11 @@ function showSources(){
 // ---------------------------------------------------------------- legend, layers, views
 function legend(){
   const L = $("legend"), M = COLORS[cMode], hex = c => "#" + c.toString(16).padStart(6, "0");
+  if (cMode === "photo"){
+    const T = S.imagery.textures, d = [...new Set(Object.values(T.dates))].sort().join(" and ");
+    L.innerHTML = `<b>Photo textures</b><span>Walls: Nearmap obliques ${esc(d)}</span><span>Roofs: Nearmap vertical ${esc(T.textures.roof ? T.textures.roof.date : "")}</span><span>Draped on the lidar model, so edges are approximate (about ±0.5 m)</span>`;
+    return;
+  }
   const KINDS = new Set([...EL.values()].map(e => e.kind));
   const names0 = cMode === "material" ? {wall:"masonry wall", parapet:"parapet", roof:"pitched roof", flatroof:"flat roof", chimney:"chimney", window:"window", door:"door", floor:"floor plate (assumed)", interior:"interior wall (Sanborn)", walk:"walkway segment", tree:"tree crown (lidar)", foundation:"foundation / retaining", porch:"porch deck", context:"context massing"} :
     cMode === "severity" ? {critical:"critical", high:"high", medium:"medium", low:"low", unknown:"unknown", none:"no record"} :
@@ -581,6 +620,7 @@ async function boot(){
     const sel = $("iMode"); sel.innerHTML = Object.entries(S.imagery).filter(([k, v]) => v.file).map(([k, v]) => `<option value="${k}">${esc(v.label.split(" (")[0])}</option>`).join("");
     loadPins(); indexRecs();
     await buildTerrain(); await buildModel(); buildPins();
+    if (TEXM.size){ await loadPhotoTextures(); const o = $("cMode").querySelector('option[value="photo"]'); o.hidden = false; cMode = "photo"; $("cMode").value = "photo"; colorModel(); }
     await buildPoints("points.bin", layers.points, 1); await buildPoints("points06.bin", layers.points06, 1);
     statusEl.hidden = true; resize(); home(); showBuilding(); legend();
     if (!KEY) window.__twin = {select, S: () => S, meshes};
