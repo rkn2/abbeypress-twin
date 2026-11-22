@@ -82,6 +82,13 @@ figcaption,.strip-cap{font-size:.8rem;line-height:1.5;color:var(--muted);margin:
 .chapter.flip .ch-text{order:2}
 .ch-text p:not(.section-label){font-size:1rem;line-height:1.7;color:var(--ink-2);max-width:60ch}
 .ch-fig{margin:0}
+.sb-stack{position:relative;aspect-ratio:8/5;border-radius:6px;overflow:hidden;background:var(--grid);border:1px solid var(--line)}
+.sb-stack img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s;border-radius:0}
+.sb-stack img.on{opacity:1}
+.sb-slider input[type=range]{width:100%;margin:.8rem 0 .1rem;accent-color:var(--accent,#1e407c)}
+.sb-ticks{display:flex;justify-content:space-between;font-size:.85rem;font-variant-numeric:tabular-nums}
+.sb-ticks button{background:none;border:0;padding:.2rem .1rem;color:var(--muted,#555);cursor:pointer;font:inherit}
+.sb-ticks button.on{color:var(--ink);font-weight:600}
 .ch-fig.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;align-items:start}
 .ch-fig.strip figure{margin:0}.ch-fig.strip img{aspect-ratio:1;object-fit:cover}
 .ch-fig.strip figcaption{margin-top:.25rem;font-variant-numeric:tabular-nums}
@@ -247,8 +254,8 @@ table.kv td{overflow-wrap:anywhere}
 <article class="chapter">
  <div class="ch-text"><p class="section-label">About 1900</p><h2>Built for the press</h2>
  <p>Saint Vincent's monks bought their first printing presses in 1864, decades before this building existed. The 1887 fire insurance map shows the site empty. By 1903 the same map shows a two-storey brick building shaped like a T, with printing on the ground floor, a book bindery above it, an engine room in the taller centre and a carpenter shop in the north wing.</p>
- <p>It was probably built between 1897 and 1903, not in the 1840s as was sometimes said. The monastery ran its own brickyard nearby at the time, although no record ties these bricks to it.</p></div>
- <figure class="ch-fig"><img data-src="hist_sanborn1903.jpg" alt="Pink building outline on a 1903 fire insurance map labelled Printing 1st, Book Bindery 2nd, Engine, Carpenter shop"><figcaption>Sanborn fire insurance map of Latrobe, 1903, sheet 18. Library of Congress.</figcaption></figure>
+ <p>Slide through the five editions of the map to watch the site change. The building was probably put up between 1897 and 1903, not in the 1840s as was sometimes said. The monastery ran its own brickyard nearby at the time, although no record ties these bricks to it.</p></div>
+ <figure class="ch-fig sb-slider" id="sbSlider"><div class="sb-stack"><img data-src="hist_sanborn_1887.jpg" data-year="1887" data-cap="January 1887. The site is still empty. The dashed outline shows where the building would go." data-loc="https://www.loc.gov/item/sanborn07761_001/" alt="Sanborn fire insurance map, 1887, around the site of the Abbey Press"><img data-src="hist_sanborn_1892.jpg" data-year="1892" data-cap="March 1892. The kilns drawn here are an inset of the Monastery Brick Yards, which stood about 600 ft away. The mapmakers put it in the empty space on the sheet." data-loc="https://www.loc.gov/item/sanborn07761_002/" alt="Sanborn fire insurance map, 1892, around the site of the Abbey Press"><img data-src="hist_sanborn_1897.jpg" data-year="1897" data-cap="July 1897. The brickyard inset is still drawn over the empty site." data-loc="https://www.loc.gov/item/sanborn07761_003/" alt="Sanborn fire insurance map, 1897, around the site of the Abbey Press"><img data-src="hist_sanborn_1903.jpg" data-year="1903" data-cap="October 1903. The building appears, with printing on the ground floor, a book bindery above, an engine room in the taller centre and a carpenter shop." data-loc="https://www.loc.gov/item/sanborn07761_004/" class=on alt="Sanborn fire insurance map, 1903, around the site of the Abbey Press"><img data-src="hist_sanborn_1909.jpg" data-year="1909" data-cap="July 1909. The building is unchanged." data-loc="https://www.loc.gov/item/sanborn07761_005/" alt="Sanborn fire insurance map, 1909, around the site of the Abbey Press"></div><input type="range" min="0" max="4" step="1" value="3" aria-label="Sanborn map year" aria-valuetext="1903"><div class="sb-ticks"><button type="button" data-i="0">1887</button><button type="button" data-i="1">1892</button><button type="button" data-i="2">1897</button><button type="button" data-i="3">1903</button><button type="button" data-i="4">1909</button></div><figcaption><span class="sb-cap">October 1903. The building appears, with printing on the ground floor, a book bindery above, an engine room in the taller centre and a carpenter shop.</span> Sanborn fire insurance maps of Latrobe, <a class="sb-loc" href="https://www.loc.gov/item/sanborn07761_004/">Library of Congress</a>. Each edition is lined up with the 1903 sheet using the monastery towers and the barn, to within about 3 ft.</figcaption></figure>
 </article>
 <article class="chapter flip">
  <div class="ch-text"><p class="section-label">1903 to 2020</p><h2>A century by the entrance</h2>
@@ -817,6 +824,12 @@ async function boot(){
     if (!KEY) window.__twin = {select, S: () => S, meshes, camera, canvas, sel: () => selected};
     $("meta").textContent = `${S.elements.filter(e => e.bbox).length} elements · ${S.conditions.length} condition records · built ${S.generated}`;
     $("about").innerHTML = S.meta.about;
+    { const sb = document.getElementById("sbSlider");
+      if (sb) { const ims = [...sb.querySelectorAll(".sb-stack img")], r = sb.querySelector("input"), tk = [...sb.querySelectorAll(".sb-ticks button")];
+        const show = i => { ims.forEach((m, k) => m.classList.toggle("on", k === i)); tk.forEach((b, k) => b.classList.toggle("on", k === i));
+          r.value = i; r.setAttribute("aria-valuetext", ims[i].dataset.year);
+          sb.querySelector(".sb-cap").textContent = ims[i].dataset.cap; sb.querySelector(".sb-loc").href = ims[i].dataset.loc; };
+        r.addEventListener("input", () => show(+r.value)); tk.forEach((b, k) => b.addEventListener("click", () => show(k))); show(+r.value); } }
     document.querySelectorAll("header img[data-src], #story img[data-src]").forEach(async i => { try { i.src = await imgURL(i.dataset.src); } catch(e){ i.closest("figure").hidden = true; } });
   } catch(e){ report("the model", e); return; }
   (function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); placeLabels(); })();
