@@ -403,6 +403,13 @@ async function buildModel(){
     o.updateWorldMatrix(true, false);
     const g = o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); g.computeVertexNormals();
     photoUV(id, g);
+    if (e.kind === "roof" || e.kind === "flatroof"){       // roof slab edges and undersides read as fascia and soffit, not as more photo
+      const n = g.attributes.normal, col = new Float32Array(n.count * 3);
+      for (let i = 0; i < n.count; i++){ const v = n.getY(i) > 0.3 ? 1 : 0.28; col[3*i] = col[3*i+1] = col[3*i+2] = v; }
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3)); o.material.vertexColors = true;
+      // photo mode adds an emissive copy of the photo, which ignores vertex colours: darken it on the edges too
+      o.material.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n#ifdef USE_COLOR\ntotalEmissiveRadiance *= vColor.rgb;\n#endif"); };
+    }
     const w = new THREE.Mesh(g, o.material); w.userData.id = id;
     if (e.kind !== "ground") layers[layerOf(e.kind)].add(w);
     meshes.set(id, w);
@@ -419,10 +426,12 @@ function photoUV(id, g){
     const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i);
     if (t.kind === "plan"){ uv[2*i] = (X - t.x0) / (t.x1 - t.x0); uv[2*i+1] = 1 - (Z - t.z0) / (t.z1 - t.z0); continue; }
     let u = (X - t.origin[0]) * t.dir[0] + (Z - t.origin[1]) * t.dir[1];
-    // wall ends and window reveals face along the wall: sample just inside the corner instead of the padded edge (avoids streaks)
-    if (Math.abs(nrm.getX(i) * t.dir[1] - nrm.getZ(i) * t.dir[0]) < 0.5) u = Math.min(Math.max(u, t.u0 + 0.45), t.u1 - 0.45);
-    // wall tops and bottoms (horizontal faces) would repeat one texture row across the thickness: sample brick a little below instead
-    const vv = Math.abs(nrm.getY(i)) > 0.5 ? Y - 0.6 * Math.sign(nrm.getY(i)) : Y;
+    const w = Math.abs((X - t.origin[0]) * t.dir[1] - (Z - t.origin[1]) * t.dir[0]);   // depth into the wall from its outer face
+    let vv = Y;
+    // wall ends and window reveals (faces along the wall's thickness) and wall tops/bottoms would stretch one texture column or row
+    // into streaks: map them to a small patch of real brick just inside the corner, using the depth as the second coordinate
+    if (Math.abs(nrm.getY(i)) > 0.5) vv = Y - (0.6 + w) * Math.sign(nrm.getY(i));
+    else if (Math.abs(nrm.getX(i) * t.dir[1] - nrm.getZ(i) * t.dir[0]) < 0.5){ const lo = t.u0 + 0.45, hi = t.u1 - 0.45; u = u < (t.u0 + t.u1) / 2 ? Math.max(u, lo) + w : Math.min(u, hi) - w; }
     uv[2*i] = (u - t.u0) / (t.u1 - t.u0); uv[2*i+1] = (vv - t.v0) / (t.v1 - t.v0);
   }
   g.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); TEXM.set(id, t.file);
