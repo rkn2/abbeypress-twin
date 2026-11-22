@@ -436,6 +436,11 @@ function colorModel(){
     const e = EL.get(id); let c;
     const tex = photo && TEXM.has(id) ? texCache.get(TEXM.get(id)) : null;
     if (m.material.map !== tex){ m.material.map = tex; m.material.emissiveMap = tex; m.material.needsUpdate = true; }
+    // the window and door boxes were spaced evenly, not traced, so in photo mode they go invisible (still clickable) and the photo's real openings show
+    const ghost = photo && (e.kind === "window" || e.kind === "door");
+    if (m.material.userData.ghost !== ghost){ m.material.userData.ghost = ghost; m.material.transparent = ghost || e.kind === "floor" || e.kind === "interior" || e.kind === "tree" || e.kind === "ground"; m.material.depthWrite = !ghost && e.kind !== "tree"; m.material.needsUpdate = true; }
+    if (ghost){ m.material.opacity = id === selected ? 0.55 : 0; m.material.color.setHex(0xf2c200); m.material.emissive.setHex(id === selected ? 0x886600 : 0); continue; }
+    else if (e.kind === "window" || e.kind === "door") m.material.opacity = 1;
     if (photo){
       c = tex ? 0xffffff : e.kind === "chimney" && T && T.brick_rgb ? (T.brick_rgb[0] << 16 | T.brick_rgb[1] << 8 | T.brick_rgb[2]) : COLORS.material[e.kind];
       m.material.color.setHex(c ?? 0x888888);
@@ -640,7 +645,7 @@ function legend(){
   const L = $("legend"), M = COLORS[cMode], hex = c => "#" + c.toString(16).padStart(6, "0");
   if (cMode === "photo"){
     const T = S.imagery.textures, d = [...new Set(Object.values(T.dates))].sort().join(" and ");
-    L.innerHTML = `<b>Photo textures</b><span>Walls: Nearmap obliques ${esc(d)}</span><span>Roofs: Nearmap vertical ${esc(T.textures.roof ? T.textures.roof.date : "")}</span><span>Draped on the lidar model, so edges are approximate (about ±0.5 m)</span>`;
+    L.innerHTML = `<b>Photo textures</b><span>Walls: Nearmap obliques ${esc(d)}</span><span>Roofs: Nearmap vertical ${esc(T.textures.roof ? T.textures.roof.date : "")}</span><span>Each wall's photo is pinned to that wall's corners. The model's window boxes are hidden here, so the windows you see are the real ones</span>`;
     return;
   }
   const KINDS = new Set([...EL.values()].map(e => e.kind));
@@ -692,7 +697,7 @@ async function boot(){
     if (TEXM.size){ await loadPhotoTextures(); const o = $("cMode").querySelector('option[value="photo"]'); o.hidden = false; cMode = "photo"; $("cMode").value = "photo"; colorModel(); }
     await buildPoints("points.bin", layers.points, 1); await buildPoints("points06.bin", layers.points06, 1);
     statusEl.hidden = true; resize(); home(); showBuilding(); legend();
-    if (!KEY) window.__twin = {select, S: () => S, meshes};
+    if (!KEY) window.__twin = {select, S: () => S, meshes, camera, canvas, sel: () => selected};
     $("meta").textContent = `${S.elements.filter(e => e.bbox).length} elements · ${S.conditions.length} condition records · built ${S.generated}`;
     $("about").innerHTML = S.meta.about;
   } catch(e){ report("the model", e); return; }
