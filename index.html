@@ -65,6 +65,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .section h2{font:400 1.5rem var(--serif);color:var(--ink);margin:0 0 1.1rem}
 .about-sec #about p{max-width:75ch;font-size:.95rem;line-height:1.7;color:var(--ink-2)}
 .about-sec code{font-family:var(--mono);font-size:.85em}
+.about-text{max-width:68ch}
 .lab-credit{display:flex;flex-wrap:wrap;gap:1.2rem;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1.2rem 1.4rem;margin-top:1.4rem;max-width:75ch}
 .lab-credit img{width:110px;height:auto;border-radius:6px;background:var(--logo-bg);padding:var(--logo-pad);flex:none}
 .lab-credit div{flex:1 1 260px;min-width:0;font-size:.92rem;line-height:1.6}
@@ -315,13 +316,8 @@ table.kv td{overflow-wrap:anywhere}
 </section>
 <section id="about-sec" class="section about-sec pad">
   <div class="inner">
-    <p class="section-label">About</p>
-    <h2>How this model was made</h2>
-    <div id="about"></div>
-    <div class="lab-credit">
-      <img src="assets/h3d-logo.png" alt="Heritage 3D Lab logo, a corner storefront drawn from point cloud to brick">
-      <div><strong>Heritage 3D Lab</strong>The Heritage 3D Lab in the <a href="https://www.ae.psu.edu/">Department of Architectural Engineering at Penn State</a> uses 3D data and AI to understand, protect and reimagine older masonry buildings. <a href="https://rkn2.github.io/heritage3d-lab/">Visit the lab site</a>.</div>
-    </div>
+    <h2>Where this came from</h2>
+    <div id="about" class="about-text"></div>
   </div>
 </section>
 <footer class="site-footer pad">
