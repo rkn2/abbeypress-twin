@@ -244,7 +244,7 @@ table.kv td{overflow-wrap:anywhere}
           <details class="grp" open><summary>Model</summary>
             <div class="row"><button class="tog" data-layer="walls" aria-pressed="true">Walls</button><button class="tog" data-layer="roofs" aria-pressed="true">Roofs</button><button class="tog" data-layer="windows" aria-pressed="true">Openings</button></div>
             <div class="row"><button class="tog" data-layer="floors" aria-pressed="false">Interior (floors, cross walls)</button><button class="tog" data-layer="pins" aria-pressed="true">Field pins</button></div>
-            <div class="row"><label class="sel">Colour <select id="cMode" aria-label="Model colour"><option value="photo" hidden>photo (aerial imagery)</option><option value="material">material</option><option value="severity">worst condition severity</option><option value="status">condition status</option><option value="source">geometry source</option></select></label></div></details>
+            <div class="row"><label class="sel">Colour <select id="cMode" aria-label="Model colour"><option value="model" hidden>modelled (realistic)</option><option value="photo" hidden>photo (aerial imagery)</option><option value="material">material</option><option value="severity">worst condition severity</option><option value="status">condition status</option><option value="source">geometry source</option></select></label></div></details>
           <details class="grp"><summary>Lidar points</summary>
             <div class="row"><button class="tog" data-layer="points" aria-pressed="false">2019 (3.7 pts/m²)</button><button class="tog" data-layer="points06" aria-pressed="false">2006–08 (0.3/m²)</button></div>
             <div class="row"><label class="sel">Size <input id="pSize" type="range" min="0.5" max="5" step="0.1" value="2.2"></label></div></details>
@@ -320,12 +320,14 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a1628);
 const camera = new THREE.PerspectiveCamera(40, 1, 0.3, 3000);
 const controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495;
 scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x3a3226, 1.1));
-const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-60, 90, 40); scene.add(sun);
+const sun = new THREE.DirectionalLight(0xfff4e6, 1.6); sun.position.set(-60, 90, 40); scene.add(sun); scene.add(sun.target);
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+Object.assign(sun.shadow.camera, {left:-45, right:45, top:45, bottom:-45, near:10, far:300}); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
 function resize(){ const r = canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(canvas.parentElement);
 
 const layers = {context:new THREE.Group(), terrain:new THREE.Group(), walls:new THREE.Group(), roofs:new THREE.Group(), windows:new THREE.Group(), floors:new THREE.Group(),
-                points:new THREE.Group(), points06:new THREE.Group(), pins:new THREE.Group()};
+                points:new THREE.Group(), points06:new THREE.Group(), pins:new THREE.Group(), detail:new THREE.Group()};
 Object.values(layers).forEach(g => scene.add(g));
 layers.floors.visible = layers.points.visible = layers.points06.visible = false;
 
@@ -402,7 +404,7 @@ async function buildModel(){
     if (!o.material.polygonOffset){ const r = SOLIDRANK(e.kind); if (r !== null){ o.material.polygonOffset = true; o.material.polygonOffsetFactor = r.f; o.material.polygonOffsetUnits = r.u + (rankN++) * 2; } }
     o.updateWorldMatrix(true, false);
     const g = o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); g.computeVertexNormals();
-    photoUV(id, g);
+    photoUV(id, g); modelUV(g, e.kind);
     if (e.kind === "roof" || e.kind === "flatroof"){       // roof slab edges and undersides read as fascia and soffit, not as more photo
       const n = g.attributes.normal, col = new Float32Array(n.count * 3);
       for (let i = 0; i < n.count; i++){ const v = n.getY(i) > 0.3 ? 1 : 0.28; col[3*i] = col[3*i+1] = col[3*i+2] = v; }
@@ -415,6 +417,39 @@ async function buildModel(){
     meshes.set(id, w);
   }
   colorModel();
+}
+// modelled mode: real-scale planar UVs per face (brick courses level on walls, slate courses parallel to the eaves)
+function planarUV(g, tile){
+  const p = g.attributes.position, n = g.attributes.normal, uv = new Float32Array(p.count * 2), up = new THREE.Vector3(0, 1, 0), N = new THREE.Vector3(), T = new THREE.Vector3(), B = new THREE.Vector3(), P = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++){
+    N.fromBufferAttribute(n, i); P.fromBufferAttribute(p, i);
+    if (Math.abs(N.y) > 0.9) T.set(1, 0, 0); else T.crossVectors(up, N).normalize();
+    B.crossVectors(N, T); uv[2*i] = P.dot(T) / tile; uv[2*i+1] = P.dot(B) / tile;
+  }
+  return new THREE.BufferAttribute(uv, 2);
+}
+function modelUV(g, kind){
+  const M = S.materials; if (!M) return;
+  const tile = kind === "roof" ? M.slate.tile : M.brick.tile;
+  g.userData.uvModel = planarUV(g, tile); if (g.attributes.uv) g.userData.uvPhoto = g.attributes.uv;
+}
+const MAT = {}, matTex = {};
+async function loadMaterials(){
+  const M = S.materials; if (!M) return;
+  for (const k of ["brick", "slate", "stone"]){
+    const tx = await new THREE.TextureLoader().loadAsync(await imgURL(M[k].file)); tx.colorSpace = THREE.SRGBColorSpace;
+    tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = renderer.capabilities.getMaxAnisotropy(); matTex[k] = tx;
+  }
+  const det = await new GLTFLoader().parseAsync(await getBuf("detail.glb"), "");
+  const mk = (o) => new THREE.MeshStandardMaterial(Object.assign({roughness:0.85, metalness:0}, o));
+  MAT.stone = mk({map:matTex.stone}); MAT.trim = mk({color:M.trim.color, roughness:0.6}); MAT.brick = mk({map:matTex.brick}); MAT.wood = mk({color:M.wood.color});
+  det.scene.traverse(o => { if (!o.isMesh) return;
+    const k = (o.name || o.parent.name).replace("mat_", ""); o.updateWorldMatrix(true, false);
+    const g = o.geometry.clone().applyMatrix4(o.matrixWorld).toNonIndexed(); g.computeVertexNormals(); g.deleteAttribute("color");
+    if (k === "stone" || k === "brick") g.setAttribute("uv", planarUV(g, k === "stone" ? M.stone.tile : M.brick.tile));
+    const w = new THREE.Mesh(g, MAT[k] || MAT.trim); w.castShadow = w.receiveShadow = true; w.raycast = () => {};   // decor never takes clicks
+    layers.detail.add(w);
+  });
 }
 // photo textures (optional: imagery.textures from build_textures.py). Facades map u along the wall and v up; roofs map in plan.
 const TEXM = new Map(), texCache = new Map();
@@ -447,9 +482,27 @@ async function loadPhotoTextures(){ await Promise.all([...new Set(TEXM.values())
 function worstRec(id){ const r = recsBy.get(id) || []; return r.reduce((a, b) => (!a || SEVR[b.severity] > SEVR[a.severity]) ? b : a, null); }
 function statusOf(id){ const r = recsBy.get(id) || []; for (const s of ["conflicting", "site", "verified", "reported", "observed-lidar", "observed-imagery", "withheld"]) if (r.some(x => x.status === s)) return s; return "none"; }
 function colorModel(){
-  const photo = cMode === "photo", T = S.imagery && S.imagery.textures;
+  const photo = cMode === "photo", T = S.imagery && S.imagery.textures, model = cMode === "model" && S.materials;
+  layers.detail.visible = !!model; sun.castShadow = !!model;
+  layers.terrain.children.forEach(t => { t.receiveShadow = !!model; });
+  if (S.frame) { sun.target.position.set(S.frame.cx, 0, -S.frame.cy); sun.position.set(S.frame.cx - 60, 90, -S.frame.cy + 40); }
   for (const [id, m] of meshes){
     const e = EL.get(id); let c;
+    const g = m.geometry, wantUV = model ? g.userData.uvModel : g.userData.uvPhoto;
+    if (wantUV && g.attributes.uv !== wantUV){ g.setAttribute("uv", wantUV); }
+    m.castShadow = m.receiveShadow = !!model && e.kind !== "floor" && e.kind !== "interior" && e.kind !== "ground" && e.kind !== "tree";
+    if (model){
+      const M = S.materials, K = e.kind;
+      const map = (K === "wall" || K === "parapet" || K === "chimney") ? matTex.brick : K === "roof" ? matTex.slate : null;
+      if (m.material.map !== map){ m.material.map = map; m.material.emissiveMap = null; m.material.needsUpdate = true; }
+      if (m.material.vertexColors && K !== "roof" && K !== "flatroof"){ m.material.vertexColors = false; m.material.needsUpdate = true; }
+      const ghost0 = m.material.userData.ghost; if (ghost0){ m.material.userData.ghost = false; m.material.transparent = false; m.material.depthWrite = true; m.material.opacity = 1; m.material.needsUpdate = true; }
+      c = map ? 0xffffff : K === "window" ? parseInt(M.glass.color.slice(1), 16) : K === "door" ? parseInt(M.wood.color.slice(1), 16) : K === "flatroof" ? parseInt(M.flatroof.color.slice(1), 16) : COLORS.material[K];
+      m.material.color.setHex(c ?? 0x888888); m.material.roughness = K === "window" ? 0.2 : 0.85; m.material.metalness = K === "window" ? 0.3 : 0;
+      m.material.emissive.setHex(id === selected ? 0x554400 : 0x000000);
+      continue;
+    }
+    m.material.roughness = 0.85; m.material.metalness = 0;
     const tex = photo && TEXM.has(id) ? texCache.get(TEXM.get(id)) : null;
     if (m.material.map !== tex){ m.material.map = tex; m.material.emissiveMap = tex; m.material.needsUpdate = true; }
     // the window and door boxes were spaced evenly, not traced, so in photo mode they go invisible (still clickable) and the photo's real openings show
@@ -659,6 +712,10 @@ function showSources(){
 // ---------------------------------------------------------------- legend, layers, views
 function legend(){
   const L = $("legend"), M = COLORS[cMode], hex = c => "#" + c.toString(16).padStart(6, "0");
+  if (cMode === "model"){
+    L.innerHTML = `<b>Modelled building</b><span>Brick, slate and stone coloured from the aerial photos</span><span>Windows on the west wall are placed from the photos; elsewhere they are estimated (see Geometry source)</span>`;
+    return;
+  }
   if (cMode === "photo"){
     const T = S.imagery.textures, d = [...new Set(Object.values(T.dates))].sort().join(" and ");
     L.innerHTML = `<b>Photo textures</b><span>Walls: Nearmap obliques ${esc(d)}</span><span>Roofs: Nearmap vertical ${esc(T.textures.roof ? T.textures.roof.date : "")}</span><span>Each wall's photo is pinned to that wall's corners. The model's window boxes are hidden here, so the windows you see are the real ones</span>`;
@@ -702,6 +759,7 @@ async function boot(){
     statusEl.textContent = "Loading model…";
     S = await getJSON("site.json"); FR = S.frame; GRADE = FR.grade;
     S.elements.forEach(e => EL.set(e.id, e));
+    renderer.shadowMap.enabled = !!S.materials;   // set before any material compiles, or shadows never appear
     for (const [k, v] of Object.entries(S.meta.colors || {})) COLORS.material[k] = parseInt(v.replace("#", ""), 16);
     if (S.elements.some(e => e.kind === "context" || e.kind === "tree")) $("ctxTog").hidden = false;
     dem = new Float32Array(await getBuf("terrain.f32"));
@@ -710,7 +768,9 @@ async function boot(){
     loadPins(); indexRecs();
     await buildTerrain(); await buildModel(); buildPins();
     if (innerWidth < 640){ $("legend").hidden = true; $("btnLegend").setAttribute("aria-expanded", "false"); }
-    if (TEXM.size){ await loadPhotoTextures(); const o = $("cMode").querySelector('option[value="photo"]'); o.hidden = false; cMode = "photo"; $("cMode").value = "photo"; colorModel(); }
+    if (TEXM.size){ await loadPhotoTextures(); $("cMode").querySelector('option[value="photo"]').hidden = false; cMode = "photo"; $("cMode").value = "photo"; }
+    if (S.materials){ await loadMaterials(); $("cMode").querySelector('option[value="model"]').hidden = false; cMode = "model"; $("cMode").value = "model"; }
+    colorModel();
     await buildPoints("points.bin", layers.points, 1); await buildPoints("points06.bin", layers.points06, 1);
     statusEl.hidden = true; resize(); home(); showBuilding(); legend();
     if (!KEY) window.__twin = {select, S: () => S, meshes, camera, canvas, sel: () => selected};
