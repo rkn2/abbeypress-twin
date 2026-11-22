@@ -72,6 +72,21 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .site-footer{text-align:center;padding-block:2rem;font-size:.8rem;color:var(--muted);border-top:1px solid var(--line)}
 .site-footer a{color:var(--steel)}
 .site-footer .foot-logo{width:56px;height:auto;border-radius:6px;background:var(--logo-bg);padding:var(--logo-pad);margin:0 auto .6rem;display:block}
+.hero-photo{margin:2rem 0 0}
+.hero-photo img,.ch-fig img{width:100%;display:block;border-radius:6px;background:var(--grid)}
+.hero-photo img{aspect-ratio:1463/760;object-fit:cover;max-height:440px}
+figcaption,.strip-cap{font-size:.8rem;line-height:1.5;color:var(--muted);margin:.5rem 0 0}
+.chapters{display:grid;gap:3.5rem}
+.chapter{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:2.4rem;align-items:center}
+.chapter.flip .ch-text{order:2}
+.ch-text p:not(.section-label){font-size:1rem;line-height:1.7;color:var(--ink-2);max-width:60ch}
+.ch-fig{margin:0}
+.ch-fig.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;align-items:start}
+.ch-fig.strip figure{margin:0}.ch-fig.strip img{aspect-ratio:1;object-fit:cover}
+.ch-fig.strip figcaption{margin-top:.25rem;font-variant-numeric:tabular-nums}
+.ch-fig.strip .strip-cap{grid-column:1/-1}
+.model-intro{max-width:75ch;color:var(--ink-2);font-size:.95rem;line-height:1.65;margin:0 0 .4rem}
+@media (max-width:780px){.chapter{grid-template-columns:minmax(0,1fr);gap:1rem}.chapter.flip .ch-text{order:0}.ch-fig.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #gate h1{font:400 1.4rem/1.3 var(--serif);margin:0}
 @media (max-width:640px){.stage .credit{display:none}.stage{height:min(70vh,560px)}}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;align-items:start}
@@ -212,7 +227,7 @@ table.kv td{overflow-wrap:anywhere}
 <nav class="site-nav pad" aria-label="Primary">
   <div class="inner nav-inner">
     <a href="./" class="brand-wrap"><span class="logo-tile"><img src="assets/h3d-logo.png" alt="Heritage 3D Lab logo"></span><span class="brand-text">Abbey Press <span>Digital Record</span></span></a>
-    <ul class="nav-links"><li><a href="#model">Model</a></li><li><a href="#about-sec">About</a></li></ul>
+    <ul class="nav-links"><li><a href="#story">Story</a></li><li><a href="#model">Model</a></li><li><a href="#about-sec">About</a></li></ul>
   </div>
 </nav>
 <header class="hero pad">
@@ -221,16 +236,47 @@ table.kv td{overflow-wrap:anywhere}
       <a class="hero-lab" href="https://rkn2.github.io/heritage3d-lab/"><span class="logo-tile"><img src="assets/h3d-logo.png" alt=""></span>Heritage 3D Lab</a>
       <a class="psu-lockup" href="https://www.ae.psu.edu/"><strong>Penn State</strong><i aria-hidden="true"></i>Architectural Engineering</a>
     </div>
-    <p class="eyebrow">Saint Vincent College / Archabbey · Latrobe (Unity Twp.), PA</p>
-    <h1>A digital record of the <em>Abbey Press</em> building at Saint Vincent</h1>
-    <p class="lede">The Abbey Press building stood near the entrance to Saint Vincent College in Latrobe from around 1900 until it was demolished in fall 2026, before our team could scan it on site. This model rebuilds it from public lidar, historic Sanborn maps and Nearmap aerial photos, with the building's 2021 condition reports attached to each wall, roof and window.</p>
-    <p class="meta" id="meta"></p>
+    <p class="eyebrow">Saint Vincent College · Latrobe, Pennsylvania · about 1900 to 2026</p>
+    <h1>The <em>Abbey Press</em> building, Saint Vincent</h1>
+    <p class="lede">The Abbey Press building stood beside the main entrance to Saint Vincent College in Latrobe for more than a century. It was built around 1900 as the Archabbey's printing office, bindery and carpenter shop, and it came down in fall 2026, before our team could document it in person. This page tells its story from the maps, aerial photos and reports that survive, and lets you explore a 3D model rebuilt from them.</p>
+    
+<figure class="hero-photo"><img data-src="photo_commons_2011.jpg" alt="A long red-brick building with slate roofs and a taller centre gable, seen through spring trees in front of the basilica"><figcaption>Seen from near the campus entrance, in front of the basilica, April 2011. The photo isn't captioned as the Abbey Press, but its gables, chimneys and position match. Photo by Tom Fish, <a href="https://commons.wikimedia.org/wiki/File:Saint_Vincent_College_and_Basilica.jpg">Wikimedia Commons</a>, CC BY-SA 4.0, cropped.</figcaption></figure>
+</div></header>
+<section id="story" class="section pad"><div class="inner chapters">
+<article class="chapter">
+ <div class="ch-text"><p class="section-label">About 1900</p><h2>Built for the press</h2>
+ <p>Saint Vincent's monks bought their first printing presses in 1864, decades before this building existed. The 1887 fire insurance map shows the site empty. By 1903 the same map shows a two-storey brick building shaped like a T, with printing on the ground floor, a book bindery above it, an engine room in the taller centre and a carpenter shop in the north wing.</p>
+ <p>It was probably built between 1897 and 1903, not in the 1840s as was sometimes said. The monastery ran its own brickyard nearby at the time, although no record ties these bricks to it.</p></div>
+ <figure class="ch-fig"><img data-src="hist_sanborn1903.jpg" alt="Pink building outline on a 1903 fire insurance map labelled Printing 1st, Book Bindery 2nd, Engine, Carpenter shop"><figcaption>Sanborn fire insurance map of Latrobe, 1903, sheet 18. Library of Congress.</figcaption></figure>
+</article>
+<article class="chapter flip">
+ <div class="ch-text"><p class="section-label">1903 to 2020</p><h2>A century by the entrance</h2>
+ <p>The building shows up in every aerial photo of the campus from 1939 on. It stood apart from the central buildings that burned in 1963 and went on working as a shop. In recent years it held carpentry machinery, an old printing press in one corner and Br. Mark Floreanini's stained-glass studio.</p></div>
+ <div class="ch-fig strip"><figure><img data-src="hist_1939.jpg" alt="1939 aerial photo"><figcaption>1939</figcaption></figure><figure><img data-src="hist_1957.jpg" alt="1957 aerial photo"><figcaption>1957</figcaption></figure><figure><img data-src="hist_1967.jpg" alt="1967 aerial photo"><figcaption>1967</figcaption></figure><figure><img data-src="hist_1980s.jpg" alt="1980s colour-infrared aerial photo"><figcaption>1980s</figcaption></figure>
+ <p class="strip-cap">The building is at the centre of each frame. PennPilot and NHAP aerial photos, via PASDA.</p></div>
+</article>
+<article class="chapter">
+ <div class="ch-text"><p class="section-label">March 2021</p><h2>Two assessments that disagree</h2>
+ <p>In March 2021 two reports looked at the building. MCF Architects found the outer brick walls sound apart from repointing and loose parapets, but the wood floors inside were failing and the building was unsafe to occupy. A second list, probably from college facilities, described crumbling brick and leaning parapets.</p>
+ <p>MCF put a full renovation at $9.9 to 11 million. The two reports disagree about the walls, and this record keeps both readings on the model.</p></div>
+ <figure class="ch-fig"><img data-src="nearmap_oblique_east_2021-03-03.jpg" alt="Aerial view of the west front in late winter" onerror="this.closest('figure').hidden=true"><figcaption>Nearmap aerial, March 3, 2021, two days before the MCF walk-through.</figcaption></figure>
+</article>
+<article class="chapter flip">
+ <div class="ch-text"><p class="section-label">Fall 2026</p><h2>Demolition</h2>
+ <p>In fall 2026 donors to Penn State's College of Arts and Architecture asked the university to help save the building, and a group of faculty began planning a visit to scan and photograph it. By the time one of them reached the site, it was already coming down.</p>
+ <p>The last aerial photo that shows it standing was taken on September 2, 2026. Everything below is built from what was recorded before then.</p></div>
+ <figure class="ch-fig"><img data-src="nearmap_oblique_east.jpg" alt="Aerial view of the west front, April 2026" onerror="this.closest('figure').hidden=true"><figcaption>Nearmap aerial, April 8, 2026, looking east at the west front.</figcaption></figure>
+</article>
+</div></section>
+<div hidden>
   </div>
 </header>
 <section id="model" class="section section--sand pad">
 <div class="inner">
   <p class="section-label">Model</p>
-  <h2>Explore the building</h2>
+  <h2>Explore the model</h2>
+  <p class="model-intro">We rebuilt the building from public lidar, the fire insurance maps and the aerial photos. The west front is placed from photos, and where no photo shows a wall its windows are our estimate. You can see which is which under Layers, then Colour, then geometry source. Click any wall, roof or window to see the condition records and sources behind it, or switch to the aerial photos under Layers. Saint Vincent College never confirmed for us which building this was, so the identification rests on the maps and photos.</p>
+  <p class="meta" id="meta"></p>
   <main class="layout">
     <section class="stage" aria-label="3D building model">
       <canvas id="c" aria-label="Interactive 3D element model of Abbey Press Building, Saint Vincent with condition records"></canvas>
@@ -431,7 +477,7 @@ function planarUV(g, tile){
 function modelUV(g, kind){
   const M = S.materials; if (!M) return;
   const tile = kind === "roof" ? M.slate.tile : M.brick.tile;
-  g.userData.uvModel = planarUV(g, tile); if (g.attributes.uv) g.userData.uvPhoto = g.attributes.uv;
+  g.setAttribute("uv1", planarUV(g, tile));   // modelled textures read channel 1; photo textures keep channel 0 (no attribute swapping)
 }
 const MAT = {}, matTex = {};
 async function loadMaterials(){
@@ -439,6 +485,7 @@ async function loadMaterials(){
   for (const k of ["brick", "slate", "stone"]){
     const tx = await new THREE.TextureLoader().loadAsync(await imgURL(M[k].file)); tx.colorSpace = THREE.SRGBColorSpace;
     tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = renderer.capabilities.getMaxAnisotropy(); matTex[k] = tx;
+    const t1 = tx.clone(); t1.channel = 1; matTex[k + "1"] = t1;   // copy that reads the element model's uv1
   }
   const det = await new GLTFLoader().parseAsync(await getBuf("detail.glb"), "");
   const mk = (o) => new THREE.MeshStandardMaterial(Object.assign({roughness:0.85, metalness:0}, o));
@@ -488,12 +535,10 @@ function colorModel(){
   if (S.frame) { sun.target.position.set(S.frame.cx, 0, -S.frame.cy); sun.position.set(S.frame.cx - 60, 90, -S.frame.cy + 40); }
   for (const [id, m] of meshes){
     const e = EL.get(id); let c;
-    const g = m.geometry, wantUV = model ? g.userData.uvModel : g.userData.uvPhoto;
-    if (wantUV && g.attributes.uv !== wantUV){ g.setAttribute("uv", wantUV); }
     m.castShadow = m.receiveShadow = !!model && e.kind !== "floor" && e.kind !== "interior" && e.kind !== "ground" && e.kind !== "tree";
     if (model){
       const M = S.materials, K = e.kind;
-      const map = (K === "wall" || K === "parapet" || K === "chimney") ? matTex.brick : K === "roof" ? matTex.slate : null;
+      const map = (K === "wall" || K === "parapet" || K === "chimney") ? matTex.brick1 : K === "roof" ? matTex.slate1 : null;
       if (m.material.map !== map){ m.material.map = map; m.material.emissiveMap = null; m.material.needsUpdate = true; }
       if (m.material.vertexColors && K !== "roof" && K !== "flatroof"){ m.material.vertexColors = false; m.material.needsUpdate = true; }
       const ghost0 = m.material.userData.ghost; if (ghost0){ m.material.userData.ghost = false; m.material.transparent = false; m.material.depthWrite = true; m.material.opacity = 1; m.material.needsUpdate = true; }
@@ -506,7 +551,7 @@ function colorModel(){
     const tex = photo && TEXM.has(id) ? texCache.get(TEXM.get(id)) : null;
     if (m.material.map !== tex){ m.material.map = tex; m.material.emissiveMap = tex; m.material.needsUpdate = true; }
     // the window and door boxes were spaced evenly, not traced, so in photo mode they go invisible (still clickable) and the photo's real openings show
-    const ghost = photo && (e.kind === "window" || e.kind === "door");
+    const ghost = photo && (e.kind === "window" || e.kind === "door") && !TEXM.has(id);   // with a photo, the recessed glass shows the photo's own window
     if (m.material.userData.ghost !== ghost){ m.material.userData.ghost = ghost; m.material.transparent = ghost || e.kind === "floor" || e.kind === "interior" || e.kind === "tree" || e.kind === "ground"; m.material.depthWrite = !ghost && e.kind !== "tree"; m.material.needsUpdate = true; }
     if (ghost){ m.material.opacity = id === selected ? 0.55 : 0; m.material.color.setHex(0xf2c200); m.material.emissive.setHex(id === selected ? 0x886600 : 0); continue; }
     else if (e.kind === "window" || e.kind === "door") m.material.opacity = 1;
@@ -776,6 +821,7 @@ async function boot(){
     if (!KEY) window.__twin = {select, S: () => S, meshes, camera, canvas, sel: () => selected};
     $("meta").textContent = `${S.elements.filter(e => e.bbox).length} elements · ${S.conditions.length} condition records · built ${S.generated}`;
     $("about").innerHTML = S.meta.about;
+    document.querySelectorAll("header img[data-src], #story img[data-src]").forEach(async i => { try { i.src = await imgURL(i.dataset.src); } catch(e){ i.closest("figure").hidden = true; } });
   } catch(e){ report("the model", e); return; }
   (function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); placeLabels(); })();
 }
